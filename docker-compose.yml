@@ -1,0 +1,14 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: familybudgetai-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Your_strong_password123"
+    ports:
+      - "14333:1433"
+    volumes:
+      - familybudgetai-sqlserver-data:/var/opt/mssql
+
+volumes:
+  familybudgetai-sqlserver-data:
