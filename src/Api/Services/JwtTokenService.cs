@@ -19,7 +19,10 @@ public sealed class JwtTokenService(IConfiguration configuration) : IJwtTokenSer
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email)
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim("first_name", user.FirstName),
+            new Claim("last_name", user.LastName)
         };
 
         var token = new JwtSecurityToken(

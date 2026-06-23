@@ -10,21 +10,37 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
 {
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(email) || request.Password.Length < 8)
+        var username = request.Username.Trim().ToLowerInvariant();
+        var firstName = request.FirstName.Trim();
+        var lastName = request.LastName.Trim();
+
+        if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
         {
-            throw new InvalidOperationException("Email is required and password must be at least 8 characters.");
+            throw new InvalidOperationException("Username is required and must be at least 3 characters.");
         }
 
-        var exists = await dbContext.Users.AnyAsync(x => x.Email == email, cancellationToken);
-        if (exists)
+        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
         {
-            throw new InvalidOperationException("A user with that email already exists.");
+            throw new InvalidOperationException("First name and last name are required.");
+        }
+
+        if (request.Password.Length < 8)
+        {
+            throw new InvalidOperationException("Password must be at least 8 characters.");
+        }
+
+        var usernameExists = await dbContext.Users.AnyAsync(x => x.Username == username, cancellationToken);
+        if (usernameExists)
+        {
+            throw new InvalidOperationException("A user with that username already exists.");
         }
 
         var user = new User
         {
-            Email = email,
+            Username = username,
+            FirstName = firstName,
+            LastName = lastName,
+            Email = $"{username}@familybudget.local",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
 
@@ -37,12 +53,12 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
-        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Email == email, cancellationToken);
+        var username = request.Username.Trim().ToLowerInvariant();
+        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == username, cancellationToken);
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
-            throw new UnauthorizedAccessException("Invalid email or password.");
+            throw new UnauthorizedAccessException("Invalid username or password.");
         }
 
         var dto = ToDto(user);
@@ -57,5 +73,5 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
         return ToDto(user);
     }
 
-    private static UserDto ToDto(User user) => new(user.Id, user.Email, user.CreatedAt);
+    private static UserDto ToDto(User user) => new(user.Id, user.Username, user.FirstName, user.LastName, user.Email, user.CreatedAt);
 }

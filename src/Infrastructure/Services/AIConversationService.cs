@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Globalization;
 using System.Text.Json;
 using Application.DTOs;
 using Application.Interfaces;
@@ -119,17 +120,18 @@ public sealed class AIConversationService(
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var monthly = Math.Round(subscriptions.Sum(TotalsCalculator.MonthlyCost), 2);
         var yearly = Math.Round(subscriptions.Sum(TotalsCalculator.YearlyCost), 2);
+        var currency = CultureInfo.GetCultureInfo("sv-SE");
         var upcoming = subscriptions
             .Where(x => TotalsCalculator.RenewsWithin(x.RenewalDate, today, 7))
-            .Select(x => $"{x.Name} renews on {TotalsCalculator.NextRenewalOnOrAfter(x.RenewalDate, today):yyyy-MM-dd} ({x.Cost:C}, {x.BillingFrequency})");
+            .Select(x => $"{x.Name} renews on {TotalsCalculator.NextRenewalOnOrAfter(x.RenewalDate, today):yyyy-MM-dd} ({x.Cost.ToString("C", currency)}, {x.BillingFrequency})");
 
         var lines = subscriptions.Select(x =>
-            $"- {x.Name}: {x.Cost:C} {x.BillingFrequency}, category {x.Category}, next renewal date basis {x.RenewalDate:yyyy-MM-dd}");
+            $"- {x.Name}: {x.Cost.ToString("C", currency)} {x.BillingFrequency}, category {x.Category}, next renewal date basis {x.RenewalDate:yyyy-MM-dd}");
 
         return $"""
             Calculated by backend:
-            Monthly recurring total: {monthly:C}
-            Yearly recurring total: {yearly:C}
+            Monthly recurring total: {monthly.ToString("C", currency)}
+            Yearly recurring total: {yearly.ToString("C", currency)}
             Upcoming renewals in next 7 days: {string.Join("; ", upcoming.DefaultIfEmpty("None"))}
 
             Subscriptions:
