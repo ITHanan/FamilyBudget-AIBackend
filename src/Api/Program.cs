@@ -7,12 +7,17 @@ using Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
+AppContext.SetSwitch("Switch.Microsoft.Data.SqlClient.UseManagedNetworkingOnWindows", true);
+
 var builder = WebApplication.CreateBuilder(args);
+
+ValidateProductionConfiguration(builder.Configuration, builder.Environment);
 
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddCors(options =>
 {
@@ -26,7 +31,7 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            var frontendUrl = builder.Configuration["Frontend:Url"] ?? "http://localhost:5173";
+            var frontendUrl = builder.Configuration["Frontend:Url"]!;
 
             policy.WithOrigins(frontendUrl)
                 .AllowAnyHeader()
@@ -73,6 +78,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseHangfireDashboard("/hangfire");
+app.MapHealthChecks("/health");
+app.MapGet("/", () => Results.Ok(new { status = "ok", service = "FamilyBudgetAI.Api" }));
 app.MapControllers();
 
 RecurringJob.AddOrUpdate<INotificationReminderJob>(
@@ -81,5 +88,44 @@ RecurringJob.AddOrUpdate<INotificationReminderJob>(
     Cron.Daily);
 
 app.Run();
+
+static void ValidateProductionConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
+{
+    if (environment.IsDevelopment())
+    {
+        return;
+    }
+
+    var requiredKeys = new[]
+    {
+        "ConnectionStrings:DefaultConnection",
+        "Jwt:Key",
+        "Jwt:Issuer",
+        "Jwt:Audience",
+        "Frontend:Url"
+    };
+
+    var missingKeys = requiredKeys
+        .Where(key => string.IsNullOrWhiteSpace(configuration[key]))
+        .ToArray();
+
+    if (missingKeys.Length > 0)
+    {
+        throw new InvalidOperationException(
+            "Missing required production configuration: " + string.Join(", ", missingKeys));
+    }
+
+    var jwtKey = configuration["Jwt:Key"]!;
+    if (jwtKey.Contains("development-only", StringComparison.OrdinalIgnoreCase) || jwtKey.Length < 32)
+    {
+        throw new InvalidOperationException("Jwt:Key must be a production secret with at least 32 characters.");
+    }
+
+    var frontendUrl = configuration["Frontend:Url"]!;
+    if (!Uri.TryCreate(frontendUrl, UriKind.Absolute, out _))
+    {
+        throw new InvalidOperationException("Frontend:Url must be an absolute URL, for example https://your-frontend.vercel.app.");
+    }
+}
 
 public partial class Program;

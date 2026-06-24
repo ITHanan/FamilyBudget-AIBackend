@@ -21,7 +21,7 @@ docker compose up -d
 The API uses:
 
 ```text
-Server=localhost,14333;Database=FamilyBudgetAI;User Id=sa;Password=Your_strong_password123;TrustServerCertificate=True;
+Server=localhost,14333;Database=FamilyBudgetAI;User Id=sa;Password=Your_strong_password123;Encrypt=False;TrustServerCertificate=True;
 ```
 
 ## Apply Database Migrations
@@ -89,6 +89,48 @@ API:
 - Hangfire dashboard: `http://localhost:5001/hangfire`
 
 This machine already has Docker Desktop listening on port `5000`, so the project is configured to use `5001`.
+
+## Deploy To Azure App Service
+
+Publish from the API project:
+
+```bash
+dotnet restore src/Api/Api.csproj
+dotnet publish src/Api/Api.csproj -c Release -o artifacts/publish
+```
+
+If restore/build exits with `Build FAILED` but shows `0 Error(s)`, run MSBuild serially:
+
+```bash
+dotnet msbuild src/Api/Api.csproj /t:Restore /nr:false /m:1
+dotnet msbuild FamilyBudget-AIBackend.sln /t:Build /p:Configuration=Release /nr:false /m:1
+dotnet publish src/Api/Api.csproj --no-restore -c Release -o artifacts/publish /p:BuildInParallel=false /m:1
+```
+
+Set these Azure App Service application settings:
+
+```text
+ASPNETCORE_ENVIRONMENT=Production
+ConnectionStrings__DefaultConnection=Server=tcp:<server>.database.windows.net,1433;Initial Catalog=<database>;User ID=<user>;Password=<password>;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+Jwt__Key=<at least 32 random characters>
+Jwt__Issuer=FamilyBudgetAI
+Jwt__Audience=FamilyBudgetAI.Client
+Frontend__Url=https://<your-frontend-host>
+AI__Provider=OpenAI
+OpenAI__ApiKey=<OpenAI API key>
+OpenAI__Model=gpt-4o-mini
+```
+
+Run EF migrations against Azure SQL before using the app:
+
+```bash
+dotnet ef database update --project src/Infrastructure/Infrastructure.csproj --startup-project src/Api/Api.csproj
+```
+
+After deployment, check:
+
+- `https://<your-api-app>.azurewebsites.net/health`
+- `https://<your-api-app>.azurewebsites.net/`
 
 ## Implemented Endpoints
 
