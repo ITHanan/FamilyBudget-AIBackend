@@ -9,9 +9,10 @@ namespace Api.Services;
 
 public sealed class JwtTokenService(IConfiguration configuration) : IJwtTokenService
 {
-    public string CreateToken(UserDto user)
+    public AuthResponse CreateAuthResponse(UserDto user)
     {
         var key = configuration["Jwt:Key"] ?? "development-only-secret-key-change-me";
+        var expiresAt = DateTime.UtcNow.AddMinutes(GetAccessTokenMinutes());
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             SecurityAlgorithms.HmacSha256);
@@ -29,9 +30,15 @@ public sealed class JwtTokenService(IConfiguration configuration) : IJwtTokenSer
             issuer: configuration["Jwt:Issuer"],
             audience: configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
+            expires: expiresAt,
             signingCredentials: credentials);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return new AuthResponse(new JwtSecurityTokenHandler().WriteToken(token), expiresAt, user);
+    }
+
+    private int GetAccessTokenMinutes()
+    {
+        var configuredMinutes = configuration.GetValue<int?>("Jwt:AccessTokenMinutes");
+        return configuredMinutes is > 0 and <= 1440 ? configuredMinutes.Value : 60;
     }
 }

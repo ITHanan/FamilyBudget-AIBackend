@@ -4,6 +4,7 @@ using Domain.Entities;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Mail;
+using System.Text.RegularExpressions;
 
 namespace Infrastructure.Services;
 
@@ -31,9 +32,10 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
             throw new InvalidOperationException("Enter a valid email address.");
         }
 
-        if (request.Password.Length < 8)
+        var passwordErrors = ValidatePassword(request.Password, username, email);
+        if (passwordErrors.Count > 0)
         {
-            throw new InvalidOperationException("Password must be at least 8 characters.");
+            throw new InvalidOperationException(string.Join(" ", passwordErrors));
         }
 
         var usernameExists = await dbContext.Users.AnyAsync(x => x.Username == username, cancellationToken);
@@ -61,7 +63,7 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var dto = ToDto(user);
-        return new AuthResponse(jwtTokenService.CreateToken(dto), dto);
+        return jwtTokenService.CreateAuthResponse(dto);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
@@ -75,7 +77,7 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
         }
 
         var dto = ToDto(user);
-        return new AuthResponse(jwtTokenService.CreateToken(dto), dto);
+        return jwtTokenService.CreateAuthResponse(dto);
     }
 
     public async Task<UserDto> GetMeAsync(int userId, CancellationToken cancellationToken)
@@ -104,5 +106,50 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
         {
             return false;
         }
+    }
+
+    private static IReadOnlyList<string> ValidatePassword(string password, string username, string email)
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 12)
+        {
+            errors.Add("Password must be at least 12 characters.");
+        }
+
+        if (!Regex.IsMatch(password, "[a-z]"))
+        {
+            errors.Add("Password must include a lowercase letter.");
+        }
+
+        if (!Regex.IsMatch(password, "[A-Z]"))
+        {
+            errors.Add("Password must include an uppercase letter.");
+        }
+
+        if (!Regex.IsMatch(password, "[0-9]"))
+        {
+            errors.Add("Password must include a number.");
+        }
+
+        if (!Regex.IsMatch(password, "[^a-zA-Z0-9]"))
+        {
+            errors.Add("Password must include a symbol.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(username) &&
+            password.Contains(username, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add("Password cannot contain your username.");
+        }
+
+        var emailName = email.Split('@')[0];
+        if (!string.IsNullOrWhiteSpace(emailName) &&
+            password.Contains(emailName, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add("Password cannot contain your email name.");
+        }
+
+        return errors;
     }
 }

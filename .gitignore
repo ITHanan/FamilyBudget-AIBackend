@@ -10,4 +10,12 @@ obj/
 *.suo
 *.log
 
+.env
+.env.*
+!.env.example
+
 artifacts/
+publish/
+**/artifacts/
+**/publish/
+**/dist/

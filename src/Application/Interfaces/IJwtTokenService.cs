@@ -4,5 +4,5 @@ namespace Application.Interfaces;
 
 public interface IJwtTokenService
 {
-    string CreateToken(UserDto user);
+    AuthResponse CreateAuthResponse(UserDto user);
 }

@@ -14,6 +14,12 @@ ASP.NET Core 9 Web API using Clean Architecture:
 
 ## Run SQL Server
 
+Create a local `.env` file from `.env.example` and set a strong local SQL password:
+
+```bash
+copy .env.example .env
+```
+
 ```bash
 docker compose up -d
 ```
@@ -21,7 +27,7 @@ docker compose up -d
 The API uses:
 
 ```text
-Server=localhost,14333;Database=FamilyBudgetAI;User Id=sa;Password=Your_strong_password123;Encrypt=False;TrustServerCertificate=True;
+Server=localhost,14333;Database=FamilyBudgetAI;User Id=sa;Password=<your-local-sql-password>;Encrypt=False;TrustServerCertificate=True;
 ```
 
 ## Apply Database Migrations
@@ -115,6 +121,7 @@ ConnectionStrings__DefaultConnection=Server=tcp:<server>.database.windows.net,14
 Jwt__Key=<at least 32 random characters>
 Jwt__Issuer=FamilyBudgetAI
 Jwt__Audience=FamilyBudgetAI.Client
+Jwt__AccessTokenMinutes=60
 Frontend__Url=https://<your-frontend-host>
 AI__Provider=OpenAI
 OpenAI__ApiKey=<OpenAI API key>
