@@ -3,6 +3,7 @@ using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Mail;
 
 namespace Infrastructure.Services;
 
@@ -13,6 +14,7 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
         var username = request.Username.Trim().ToLowerInvariant();
         var firstName = request.FirstName.Trim();
         var lastName = request.LastName.Trim();
+        var email = request.Email.Trim().ToLowerInvariant();
 
         if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
         {
@@ -22,6 +24,11 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
         if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
         {
             throw new InvalidOperationException("First name and last name are required.");
+        }
+
+        if (!IsValidEmail(email))
+        {
+            throw new InvalidOperationException("Enter a valid email address.");
         }
 
         if (request.Password.Length < 8)
@@ -35,12 +42,18 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
             throw new InvalidOperationException("A user with that username already exists.");
         }
 
+        var emailExists = await dbContext.Users.AnyAsync(x => x.Email == email, cancellationToken);
+        if (emailExists)
+        {
+            throw new InvalidOperationException("A user with that email already exists.");
+        }
+
         var user = new User
         {
             Username = username,
             FirstName = firstName,
             LastName = lastName,
-            Email = $"{username}@familybudget.local",
+            Email = email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
 
@@ -74,4 +87,22 @@ public sealed class AuthService(AppDbContext dbContext, IJwtTokenService jwtToke
     }
 
     private static UserDto ToDto(User user) => new(user.Id, user.Username, user.FirstName, user.LastName, user.Email, user.CreatedAt);
+
+    private static bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email) || email.Length > 256)
+        {
+            return false;
+        }
+
+        try
+        {
+            var address = new MailAddress(email);
+            return string.Equals(address.Address, email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
 }

@@ -7,8 +7,6 @@ using Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-AppContext.SetSwitch("Switch.Microsoft.Data.SqlClient.UseManagedNetworkingOnWindows", true);
-
 var builder = WebApplication.CreateBuilder(args);
 
 ValidateProductionConfiguration(builder.Configuration, builder.Environment);

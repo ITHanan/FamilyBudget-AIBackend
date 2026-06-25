@@ -8,8 +8,6 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
 {
     public AppDbContext CreateDbContext(string[] args)
     {
-        AppContext.SetSwitch("Switch.Microsoft.Data.SqlClient.UseManagedNetworkingOnWindows", true);
-
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "Api"))
             .AddJsonFile("appsettings.json", optional: false)
