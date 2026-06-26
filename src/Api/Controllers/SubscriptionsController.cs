@@ -26,29 +26,15 @@ public sealed class SubscriptionsController(ISubscriptionService subscriptionSer
     [HttpPost]
     public async Task<ActionResult<SubscriptionDto>> Create(SubscriptionRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var subscription = await subscriptionService.CreateAsync(currentUser.UserId, request, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id = subscription.Id }, subscription);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var subscription = await subscriptionService.CreateAsync(currentUser.UserId, request, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = subscription.Id }, subscription);
     }
 
     [HttpPut("{id:int}")]
     public async Task<ActionResult<SubscriptionDto>> Update(int id, SubscriptionRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var subscription = await subscriptionService.UpdateAsync(currentUser.UserId, id, request, cancellationToken);
-            return subscription is null ? NotFound() : Ok(subscription);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var subscription = await subscriptionService.UpdateAsync(currentUser.UserId, id, request, cancellationToken);
+        return subscription is null ? NotFound() : Ok(subscription);
     }
 
     [HttpDelete("{id:int}")]

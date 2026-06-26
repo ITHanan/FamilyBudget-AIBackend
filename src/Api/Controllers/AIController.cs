@@ -33,15 +33,8 @@ public sealed class AIController(IAIConversationService aiService, ICurrentUserS
     [HttpPost("conversations/{id:int}/messages")]
     public async Task<ActionResult<SendMessageResponse>> SendMessage(int id, SendMessageRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var response = await aiService.SendMessageAsync(currentUser.UserId, id, request, cancellationToken);
-            return response is null ? NotFound() : Ok(response);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var response = await aiService.SendMessageAsync(currentUser.UserId, id, request, cancellationToken);
+        return response is null ? NotFound() : Ok(response);
     }
 
     [HttpDelete("conversations/{id:int}")]

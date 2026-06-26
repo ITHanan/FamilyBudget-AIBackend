@@ -92,6 +92,7 @@ API:
 
 - Base URL: `http://localhost:5001`
 - Swagger: `http://localhost:5001/swagger`
+- Health: `http://localhost:5001/health`
 - Hangfire dashboard: `http://localhost:5001/hangfire`
 
 This machine already has Docker Desktop listening on port `5000`, so the project is configured to use `5001`.
@@ -123,6 +124,8 @@ Jwt__Issuer=FamilyBudgetAI
 Jwt__Audience=FamilyBudgetAI.Client
 Jwt__AccessTokenMinutes=60
 Frontend__Url=https://<your-frontend-host>
+ApiDocs__EnableSwagger=false
+DemoData__Seed=false
 AI__Provider=OpenAI
 OpenAI__ApiKey=<OpenAI API key>
 OpenAI__Model=gpt-4o-mini
@@ -138,6 +141,52 @@ After deployment, check:
 
 - `https://<your-api-app>.azurewebsites.net/health`
 - `https://<your-api-app>.azurewebsites.net/`
+
+Swagger is enabled automatically in development. To expose it in production for a temporary smoke test, set:
+
+```text
+ApiDocs__EnableSwagger=true
+```
+
+Set it back to `false` after the deployment check unless the API documentation is intentionally public.
+
+## Demo Data
+
+Demo data seeding is opt-in. It creates a `demo` user with a few sample subscriptions and one notification.
+
+```text
+DemoData__Seed=true
+```
+
+Demo credentials:
+
+```text
+username: demo
+password: DemoPassword123!
+```
+
+Run migrations before enabling seeding in an environment that uses SQL Server.
+
+## Health Check
+
+`GET /health` returns `200 OK` when the ASP.NET Core app is running. Use it for App Service health checks, uptime checks, and post-deployment smoke tests.
+
+## Error And Validation Responses
+
+The API returns `application/problem+json` for validation failures and unhandled errors.
+
+- Invalid request models return `400` with field-level validation errors.
+- Service validation failures return `400`.
+- Authentication failures return `401`.
+- Unexpected production errors are logged server-side and return a generic `500` response with a `traceId`.
+
+## Tests
+
+```bash
+dotnet test
+```
+
+Coverage includes focused service tests plus integration tests for auth and subscription flows.
 
 ## Implemented Endpoints
 
@@ -157,3 +206,5 @@ After deployment, check:
 - `DELETE /api/ai/conversations/{id}`
 - `GET /api/notifications`
 - `POST /api/notifications/mark-read/{id}`
+
+See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for request/response examples and operational notes.

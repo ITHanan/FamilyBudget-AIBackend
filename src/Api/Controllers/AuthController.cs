@@ -14,28 +14,14 @@ public sealed class AuthController(IAuthService authService, ICurrentUserService
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            return Ok(await authService.RegisterAsync(request, cancellationToken));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return Ok(await authService.RegisterAsync(request, cancellationToken));
     }
 
     [HttpPost("login")]
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            return Ok(await authService.LoginAsync(request, cancellationToken));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
+        return Ok(await authService.LoginAsync(request, cancellationToken));
     }
 
     [Authorize]
