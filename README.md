@@ -208,3 +208,7 @@ Coverage includes focused service tests plus integration tests for auth and subs
 - `POST /api/notifications/mark-read/{id}`
 
 See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for request/response examples and operational notes.
+
+## Future Feature Planning
+
+- [Bank PDF Import Plan](BANK_PDF_IMPORT_PLAN.md): planned user flow, data model, endpoints, security notes, and implementation phases for importing bank statement PDFs.
