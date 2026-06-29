@@ -206,6 +206,12 @@ Coverage includes focused service tests plus integration tests for auth and subs
 - `DELETE /api/ai/conversations/{id}`
 - `GET /api/notifications`
 - `POST /api/notifications/mark-read/{id}`
+- `POST /api/bank-statements/upload`
+- `GET /api/bank-statements`
+- `GET /api/bank-statements/{id}/transactions`
+- `PUT /api/transactions/{id}/category`
+- `GET /api/transactions/summary`
+- `GET /api/transactions/recurring-candidates`
 
 See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for request/response examples and operational notes.
 

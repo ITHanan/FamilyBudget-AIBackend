@@ -71,7 +71,7 @@ public sealed class AIConversationService(
             Content = request.Content.Trim()
         };
 
-        var context = await BuildSubscriptionContextAsync(userId, cancellationToken);
+        var context = await BuildFinancialContextAsync(userId, cancellationToken);
         var assistantContent = await AskAssistantAsync(request.Content.Trim(), context, cancellationToken);
 
         var assistantMessage = new AIMessage
@@ -110,7 +110,7 @@ public sealed class AIConversationService(
         return true;
     }
 
-    private async Task<string> BuildSubscriptionContextAsync(int userId, CancellationToken cancellationToken)
+    private async Task<string> BuildFinancialContextAsync(int userId, CancellationToken cancellationToken)
     {
         var subscriptions = await dbContext.Subscriptions
             .Where(x => x.UserId == userId)
@@ -128,27 +128,64 @@ public sealed class AIConversationService(
         var lines = subscriptions.Select(x =>
             $"- {x.Name}: {x.Cost.ToString("C", currency)} {x.BillingFrequency}, category {x.Category}, next renewal date basis {x.RenewalDate:yyyy-MM-dd}");
 
+        var transactions = await dbContext.BankTransactions
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.TransactionDate)
+            .ThenByDescending(x => x.Id)
+            .Take(250)
+            .ToListAsync(cancellationToken);
+
+        var transactionIncome = Math.Round(transactions.Where(x => x.Amount > 0).Sum(x => x.Amount), 2);
+        var transactionExpenses = Math.Round(Math.Abs(transactions.Where(x => x.Amount < 0 && !x.IsInternalTransfer).Sum(x => x.Amount)), 2);
+        var transactionNet = Math.Round(transactionIncome - transactionExpenses, 2);
+        var categoryTotals = transactions
+            .Where(x => x.Amount < 0 && !x.IsInternalTransfer)
+            .GroupBy(x => x.Category)
+            .Select(x => new { Category = x.Key, Amount = Math.Round(Math.Abs(x.Sum(t => t.Amount)), 2), Count = x.Count() })
+            .OrderByDescending(x => x.Amount)
+            .Take(8)
+            .Select(x => $"- {x.Category}: {x.Amount.ToString("C", currency)} across {x.Count} transactions");
+        var largestTransactions = transactions
+            .Where(x => x.Amount < 0 && !x.IsInternalTransfer)
+            .OrderBy(x => x.Amount)
+            .Take(8)
+            .Select(x => $"- {x.TransactionDate:yyyy-MM-dd} {x.Description}: {Math.Abs(x.Amount).ToString("C", currency)} ({x.Category})");
+        var reviewCount = transactions.Count(x => x.NeedsReview);
+
         return $"""
             Calculated by backend:
             Monthly recurring total: {monthly.ToString("C", currency)}
             Yearly recurring total: {yearly.ToString("C", currency)}
             Upcoming renewals in next 7 days: {string.Join("; ", upcoming.DefaultIfEmpty("None"))}
 
+            Imported bank transaction summary:
+            Transactions included: {transactions.Count}
+            Income: {transactionIncome.ToString("C", currency)}
+            Expenses: {transactionExpenses.ToString("C", currency)}
+            Net savings: {transactionNet.ToString("C", currency)}
+            Needs review: {reviewCount}
+
+            Top bank spending categories:
+            {string.Join(Environment.NewLine, categoryTotals.DefaultIfEmpty("- None"))}
+
+            Largest bank expenses:
+            {string.Join(Environment.NewLine, largestTransactions.DefaultIfEmpty("- None"))}
+
             Subscriptions:
             {string.Join(Environment.NewLine, lines.DefaultIfEmpty("- None"))}
             """;
     }
 
-    private async Task<string> AskAssistantAsync(string question, string subscriptionContext, CancellationToken cancellationToken)
+    private async Task<string> AskAssistantAsync(string question, string financialContext, CancellationToken cancellationToken)
     {
         var provider = configuration["AI:Provider"] ?? "OpenAI";
 
         return provider.Equals("Ollama", StringComparison.OrdinalIgnoreCase)
-            ? await AskOllamaAsync(question, subscriptionContext, cancellationToken)
-            : await AskOpenAIAsync(question, subscriptionContext, cancellationToken);
+            ? await AskOllamaAsync(question, financialContext, cancellationToken)
+            : await AskOpenAIAsync(question, financialContext, cancellationToken);
     }
 
-    private async Task<string> AskOpenAIAsync(string question, string subscriptionContext, CancellationToken cancellationToken)
+    private async Task<string> AskOpenAIAsync(string question, string financialContext, CancellationToken cancellationToken)
     {
         var apiKey = configuration["OpenAI:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -165,8 +202,8 @@ public sealed class AIConversationService(
             model,
             messages = new object[]
             {
-                new { role = "system", content = "You are FamilyBudget AI. Explain subscription spending clearly for busy parents. Use the backend-calculated totals as facts; do not recalculate them." },
-                new { role = "user", content = $"Subscription context:\n{subscriptionContext}\n\nQuestion:\n{question}" }
+                new { role = "system", content = "You are FamilyBudget AI. Explain household spending clearly. Use backend-calculated totals as facts; do not recalculate them. Separate bank transaction insights from subscription-only insights when relevant." },
+                new { role = "user", content = $"Financial context:\n{financialContext}\n\nQuestion:\n{question}" }
             },
             temperature = 0.2
         };
@@ -187,7 +224,7 @@ public sealed class AIConversationService(
             .GetString() ?? "No response was returned.";
     }
 
-    private async Task<string> AskOllamaAsync(string question, string subscriptionContext, CancellationToken cancellationToken)
+    private async Task<string> AskOllamaAsync(string question, string financialContext, CancellationToken cancellationToken)
     {
         var baseUrl = configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
         var model = configuration["Ollama:Model"] ?? "llama3.2";
@@ -199,8 +236,8 @@ public sealed class AIConversationService(
             stream = false,
             messages = new object[]
             {
-                new { role = "system", content = "You are FamilyBudget AI. Explain subscription spending clearly for busy parents. Use the backend-calculated totals as facts; do not recalculate them." },
-                new { role = "user", content = $"Subscription context:\n{subscriptionContext}\n\nQuestion:\n{question}" }
+                new { role = "system", content = "You are FamilyBudget AI. Explain household spending clearly. Use backend-calculated totals as facts; do not recalculate them. Separate bank transaction insights from subscription-only insights when relevant." },
+                new { role = "user", content = $"Financial context:\n{financialContext}\n\nQuestion:\n{question}" }
             }
         };
 

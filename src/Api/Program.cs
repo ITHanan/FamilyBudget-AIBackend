@@ -123,7 +123,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment.IsEnvironment("Testing"));
 
 if (!builder.Environment.IsEnvironment("Testing"))
 {
@@ -174,7 +174,7 @@ app.Run();
 
 static void ValidateProductionConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
 {
-    if (environment.IsDevelopment())
+    if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
     {
         return;
     }

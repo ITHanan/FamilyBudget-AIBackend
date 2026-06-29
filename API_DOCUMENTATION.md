@@ -188,6 +188,91 @@ Returns renewal reminders and other notifications for the authenticated user.
 
 Marks a notification as read. Returns `204 No Content` or `404 Not Found`.
 
+## Bank Statements
+
+All bank statement endpoints require authorization.
+
+The backend processes uploaded PDFs immediately and stores extracted transaction data. It does not store the original PDF file.
+
+### POST /api/bank-statements/upload
+
+Request:
+
+```text
+multipart/form-data
+file: statement.pdf
+```
+
+Limits:
+
+```text
+PDF only
+Max file size: 10 MB
+```
+
+Response: `200 OK`
+
+```json
+{
+  "statementId": 1,
+  "transactionCount": 84,
+  "needsReviewCount": 7,
+  "recurringCandidateCount": 3
+}
+```
+
+The first parser supports generic statement text rows that contain a date, description, and trailing amount.
+
+### GET /api/bank-statements
+
+Returns imported statement metadata for the authenticated user.
+
+### GET /api/bank-statements/{id}/transactions
+
+Returns extracted transactions for one imported statement.
+
+## Transactions
+
+All transaction endpoints require authorization.
+
+### PUT /api/transactions/{id}/category
+
+Updates one transaction category. When `rememberRule` is `true`, the backend stores a user-specific category rule for similar future descriptions.
+
+Request:
+
+```json
+{
+  "category": "Groceries",
+  "rememberRule": true
+}
+```
+
+### GET /api/transactions/summary
+
+Optional query:
+
+```text
+from=2026-06-01
+to=2026-06-30
+```
+
+Returns:
+
+```text
+income
+expenses
+netSavings
+savingsRate
+categoryTotals
+largestTransactions
+recurringPaymentTotal
+```
+
+### GET /api/transactions/recurring-candidates
+
+Returns possible recurring payments detected from repeated merchant and amount patterns.
+
 ## Error Format
 
 Validation and server errors use `application/problem+json`.

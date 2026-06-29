@@ -13,4 +13,8 @@ public sealed class User
     public ICollection<Subscription> Subscriptions { get; set; } = [];
     public ICollection<AIConversation> AIConversations { get; set; } = [];
     public ICollection<Notification> Notifications { get; set; } = [];
+    public ICollection<BankStatement> BankStatements { get; set; } = [];
+    public ICollection<BankTransaction> BankTransactions { get; set; } = [];
+    public ICollection<TransactionCategoryRule> TransactionCategoryRules { get; set; } = [];
+    public ICollection<UserSuggestion> UserSuggestions { get; set; } = [];
 }

@@ -10,12 +10,15 @@ namespace Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration, bool skipDbContext = false)
     {
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
-                sqlOptions => sqlOptions.EnableRetryOnFailure()));
+        if (!skipDbContext)
+        {
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(
+                    configuration.GetConnectionString("DefaultConnection"),
+                    sqlOptions => sqlOptions.EnableRetryOnFailure()));
+        }
 
         services.AddHttpClient("openai");
         services.AddHttpClient("ollama");
@@ -26,6 +29,9 @@ public static class DependencyInjection
         services.AddScoped<IAIConversationService, AIConversationService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationReminderJob, NotificationReminderJob>();
+        services.AddScoped<IBankStatementImportService, BankStatementImportService>();
+        services.AddScoped<ITransactionService, TransactionService>();
+        services.AddScoped<IUserSuggestionService, UserSuggestionService>();
 
         return services;
     }
