@@ -13,5 +13,5 @@ public interface IBankStatementImportService
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<BankStatementDto>> GetStatementsAsync(int userId, CancellationToken cancellationToken);
-    Task<IReadOnlyList<BankTransactionDto>> GetTransactionsAsync(int userId, int statementId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<BankTransactionDto>?> GetTransactionsAsync(int userId, int statementId, CancellationToken cancellationToken);
 }

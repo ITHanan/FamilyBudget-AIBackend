@@ -94,8 +94,16 @@ public sealed class BankStatementImportService(AppDbContext dbContext) : IBankSt
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<BankTransactionDto>> GetTransactionsAsync(int userId, int statementId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<BankTransactionDto>?> GetTransactionsAsync(int userId, int statementId, CancellationToken cancellationToken)
     {
+        var statementBelongsToUser = await dbContext.BankStatements
+            .AnyAsync(x => x.Id == statementId && x.UserId == userId, cancellationToken);
+
+        if (!statementBelongsToUser)
+        {
+            return null;
+        }
+
         return await dbContext.BankTransactions
             .Where(x => x.UserId == userId && x.BankStatementId == statementId)
             .OrderByDescending(x => x.TransactionDate)

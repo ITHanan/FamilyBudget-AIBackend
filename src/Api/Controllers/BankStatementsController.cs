@@ -42,6 +42,7 @@ public sealed class BankStatementsController(
     [HttpGet("{id:int}/transactions")]
     public async Task<ActionResult<IReadOnlyList<BankTransactionDto>>> GetTransactions(int id, CancellationToken cancellationToken)
     {
-        return Ok(await importService.GetTransactionsAsync(currentUser.UserId, id, cancellationToken));
+        var transactions = await importService.GetTransactionsAsync(currentUser.UserId, id, cancellationToken);
+        return transactions is null ? NotFound() : Ok(transactions);
     }
 }
